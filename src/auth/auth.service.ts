@@ -5,12 +5,12 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AuthRegisterDTO } from './dto/auth-register.dto';
-import { UserService } from 'src/user/user.service';
 import * as bcrypt from 'bcrypt';
 import { MailerService } from '@nestjs-modules/mailer';
-import { UserEntity } from 'src/user/entity/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { UserService } from '../user/user.service';
+import { UserEntity } from '../user/entity/user.entity';
 
 @Injectable()
 export class AuthService {
@@ -32,6 +32,7 @@ export class AuthService {
           id: user.id,
           name: user.name,
           email: user.email,
+          role: user.role,
         },
         {
           expiresIn: '7 days',
@@ -45,9 +46,9 @@ export class AuthService {
   }
 
   checkToken(token: string) {
-    let data;
+    let payload;
     try {
-      data = this.jwtService.verify(token, {
+      payload = this.jwtService.verify(token, {
         issuer: this.issuer,
         audience: this.audience,
       });
@@ -55,7 +56,7 @@ export class AuthService {
       throw new BadRequestException(error);
     }
 
-    return data;
+    return payload;
   }
 
   isValidToken(token: string) {
@@ -74,7 +75,6 @@ export class AuthService {
     //   },
     // });
 
-    console.log(process.env.JWT_SECRET);
     const user = await this.usersRepository.findOneBy({
       email,
     });
@@ -137,15 +137,15 @@ export class AuthService {
       if (isNaN(userId)) {
         throw new BadRequestException('Token é invélido');
       }
-
       const salt = await bcrypt.genSalt();
       password = await bcrypt.hash(password, salt);
 
       await this.usersRepository.update(userId, {
         password,
       });
-
+      console.log('PASSOU 4');
       const user = await this.userService.show(userId);
+      console.log('PASSOU 5');
       return this.createToken(user);
     } catch (error) {
       throw new BadRequestException(error);
@@ -153,6 +153,8 @@ export class AuthService {
   }
 
   async register(data: AuthRegisterDTO) {
+    delete data.role;
+
     const user = await this.userService.create(data);
 
     return this.createToken(user);

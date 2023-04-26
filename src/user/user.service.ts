@@ -19,12 +19,13 @@ export class UserService {
   ) {}
 
   async create(user: CreateUserDTO) {
-    const exist = await this.usersRepository.exist({
+    const existEmail = await this.usersRepository.exist({
       where: {
         email: user.email,
       },
     });
-    if (exist) {
+
+    if (existEmail) {
       throw new BadRequestException('Este e mail já está em uso.');
     }
 
@@ -40,6 +41,8 @@ export class UserService {
   }
 
   async show(id: number) {
+    await this.exists(id);
+
     return this.usersRepository.findOneBy({ id });
   }
 
@@ -82,7 +85,9 @@ export class UserService {
   async delete(id: number) {
     await this.exists(id);
 
-    return this.usersRepository.delete(id);
+    const { affected } = await this.usersRepository.delete(id);
+
+    return affected > 0;
   }
 
   async exists(id: number) {
@@ -93,7 +98,7 @@ export class UserService {
         },
       }))
     ) {
-      throw new NotFoundException('Usuário não encontrado');
+      throw new NotFoundException(`Usuário ${id} não encontrado`);
     }
   }
 
